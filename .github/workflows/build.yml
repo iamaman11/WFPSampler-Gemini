@@ -11,6 +11,14 @@ jobs:
     runs-on: windows-latest
     
     steps:
+    - name: Check disk space
+      run: |
+        Get-PSDrive C | Select-Object Free, Used, Size | ForEach-Object {
+          $freeGB = [math]::Round($_.Free / 1GB, 2)
+          $usedGB = [math]::Round($_.Used / 1GB, 2)
+          $sizeGB = [math]::Round($_.Size / 1GB, 2)
+          "Disk C: Total: $sizeGB GB, Used: $usedGB GB, Free: $freeGB GB"
+        }
     - name: Checkout repository
       uses: actions/checkout@v4
 
