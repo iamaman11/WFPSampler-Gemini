@@ -1,0 +1,36 @@
+name: Build WFPSampler Driver
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup EWDK environment
+      uses: EWDK-Action/setup-ewdk@v1
+      with:
+        # Указываем версию EWDK. '22621' соответствует Windows 11, 22H2.
+        ewdk-version: '22621' 
+
+    - name: Build the driver
+      run: |
+        msbuild WFPSampler.sln /p:Configuration=Release /p:Platform=x64
+
+    - name: Upload driver artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: DriverPackage
+        path: |
+          **\x64\Release\*.sys
+          **\x64\Release\*.inf
+          **\x64\Release\*.cat
+          **\x64\Release\*.exe
+        if-no-files-found: error
