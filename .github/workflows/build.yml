@@ -1,0 +1,59 @@
+name: Build WFPSampler Driver
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Download and Mount EWDK
+      shell: pwsh
+      run: |
+        # Ссылка на EWDK для Windows 11, версия 22H2. При необходимости измените.
+        $ewdkUrl = "https://go.microsoft.com/fwlink/?linkid=2263245"
+        $isoPath = "C:\ewdk.iso"
+        
+        echo "Downloading EWDK from $ewdkUrl..."
+        Invoke-WebRequest -Uri $ewdkUrl -OutFile $isoPath -UseBasicParsing
+        
+        echo "Mounting EWDK ISO..."
+        $mount = Mount-DiskImage -ImagePath $isoPath -PassThru
+        $driveLetter = ($mount | Get-Volume).DriveLetter
+        echo "EWDK mounted to ${driveLetter}:"
+        
+        # Сохраняем букву диска для следующего шага
+        echo "EWDK_DRIVE=${driveLetter}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Build the driver
+      shell: cmd
+      run: |
+        rem Запускаем среду сборки EWDK и выполняем MSBuild
+        call %EWDK_DRIVE%:\LaunchBuildEnv.cmd
+        
+        rem Переходим в корень проекта
+        cd %GITHUB_WORKSPACE%
+        
+        rem Замените WFPSampler.sln на имя вашего файла решения, если оно отличается
+        msbuild WFPSampler.sln /p:Configuration=Release /p:Platform=x64
+
+    - name: Upload driver artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: DriverPackage
+        path: |
+          **\x64\Release\*.sys
+          **\x64\Release\*.inf
+          **\x64\Release\*.cat
+          **\x64\Release\*.exe
+        if-no-files-found: error
