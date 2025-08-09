@@ -11,30 +11,35 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - name: Check disk space
-      run: |
-        Get-PSDrive C | Select-Object Free, Used, Size | ForEach-Object {
-          $freeGB = [math]::Round($_.Free / 1GB, 2)
-          $usedGB = [math]::Round($_.Used / 1GB, 2)
-          $sizeGB = [math]::Round($_.Size / 1GB, 2)
-          "Disk C: Total: $sizeGB GB, Used: $usedGB GB, Free: $freeGB GB"
-        }
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Download and Mount EWDK
+    - name: Cache EWDK ISO
+      id: cache-ewdk
+      uses: actions/cache@v4
+      with:
+        path: C:\ewdk.iso
+        key: ${{ runner.os }}-ewdk-22621
+
+    - name: Download EWDK
+      if: steps.cache-ewdk.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $ewdkUrl = "https://go.microsoft.com/fwlink/?linkid=2263245"
         $isoPath = "C:\ewdk.iso"
         $userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
-        echo "Downloading EWDK from $ewdkUrl with custom User-Agent..."
+        echo "Downloading EWDK from $ewdkUrl..."
         Invoke-WebRequest -Uri $ewdkUrl -OutFile $isoPath -UserAgent $userAgent
         if (-not ((Get-Item $isoPath).Length -gt 1000000)) {
           echo "::error::Failed to download EWDK ISO."
           exit 1
         }
+
+    - name: Mount EWDK ISO
+      shell: pwsh
+      run: |
+        $isoPath = "C:\ewdk.iso"
         echo "Mounting EWDK ISO..."
         try {
           $mount = Mount-DiskImage -ImagePath $isoPath -PassThru -ErrorAction Stop
