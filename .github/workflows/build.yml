@@ -14,16 +14,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Test with a standard action
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
     - name: Setup EWDK environment
-      uses: ewdk-action/setup-ewdk@v1
+      uses: ewdk-action/setup-ewdk@v1.2
       with:
-        # Указываем версию EWDK. '22621' соответствует Windows 11, 22H2.
-        ewdk-version: '22621' 
+        # Указываем версию EWDK. 22621 соответствует Windows 11, 22H2.
+        ewdk-version: 22621
 
     - name: Build the driver
       run: |
