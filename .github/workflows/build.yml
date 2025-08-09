@@ -15,7 +15,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Setup EWDK environment
-      uses: EWDK-Action/setup-ewdk@v1
+      uses: ewdk-action/setup-ewdk@v1
       with:
         # Указываем версию EWDK. '22621' соответствует Windows 11, 22H2.
         ewdk-version: '22621' 
