@@ -14,14 +14,36 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup EWDK environment
-      uses: ewdk-action/setup-ewdk@v1.2
-      with:
-        # Указываем версию EWDK. 22621 соответствует Windows 11, 22H2.
-        ewdk-version: 22621
+    - name: Download and Mount EWDK
+      shell: pwsh
+      run: |
+        $ewdkUrl = "https://go.microsoft.com/fwlink/?linkid=2263245"
+        $isoPath = "C:\ewdk.iso"
+        
+        echo "Downloading EWDK from $ewdkUrl using curl..."
+        curl.exe -L -o $isoPath $ewdkUrl
+        
+        if (-not (Test-Path $isoPath)) {
+          echo "::error::Failed to download EWDK ISO."
+          exit 1
+        }
+        
+        echo "Mounting EWDK ISO..."
+        try {
+          $mount = Mount-DiskImage -ImagePath $isoPath -PassThru -ErrorAction Stop
+          $driveLetter = ($mount | Get-Volume).DriveLetter
+          echo "EWDK mounted to ${driveLetter}:"
+          echo "EWDK_DRIVE=${driveLetter}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        } catch {
+          echo "::error::Failed to mount EWDK ISO."
+          echo $_
+          exit 1
+        }
 
     - name: Build the driver
+      shell: cmd
       run: |
+        call %EWDK_DRIVE%:\LaunchBuildEnv.cmd
         msbuild WFPSampler.sln /p:Configuration=Release /p:Platform=x64
 
     - name: Upload driver artifacts
