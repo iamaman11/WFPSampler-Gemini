@@ -19,15 +19,26 @@ jobs:
       run: |
         $ewdkUrl = "https://go.microsoft.com/fwlink/?linkid=2263245"
         $isoPath = "C:\ewdk.iso"
-        
-        echo "Downloading EWDK from $ewdkUrl using curl..."
-        curl.exe -L -o $isoPath $ewdkUrl
-        
-        if (-not (Test-Path $isoPath)) {
-          echo "::error::Failed to download EWDK ISO."
+        echo "Downloading EWDK from $ewdkUrl with retries..."
+        $maxRetries = 3
+        for ($i = 1; $i -le $maxRetries; $i++) {
+          echo "Attempt $i of $maxRetries..."
+          curl.exe -L -o $isoPath --retry 3 --retry-delay 5 $ewdkUrl
+          if ($?) { # Check if curl command was successful
+             if ((Get-Item $isoPath).Length -gt 1000000) { # Check if file size is reasonable
+                echo "Download successful."
+                break
+             }
+          }
+          if ($i -lt $maxRetries) {
+            echo "Download failed or file is too small. Retrying in 15 seconds..."
+            Start-Sleep -Seconds 15
+          }
+        }
+        if (-not ((Get-Item $isoPath).Length -gt 1000000)) {
+          echo "::error::Failed to download EWDK ISO after $maxRetries attempts."
           exit 1
         }
-        
         echo "Mounting EWDK ISO..."
         try {
           $mount = Mount-DiskImage -ImagePath $isoPath -PassThru -ErrorAction Stop
